@@ -404,12 +404,6 @@ class ResonatorSpectroscopy(ProtocolOperation):
         )
 
         sweep = sweep_parameter("frequencies", frequencies, record_as(generator.generate, "signal"))
-        # Removed "+ self.readout_lo()" after "frequencies" in above line,
-        # because it was causing AttributeError due to readout_lo not being registered,
-        # and deleting it is preferable to registering it because if we did register it,
-        # then it could get applied to all platforms, including qick, 
-        # but qick may not have a readout_lo parameter,
-        # and it is not necessary for the dummy measurement anyway.
         loc, _ = run_and_save_sweep(sweep, "data", self.name)
 
         logger.info("Dummy measurement complete")
