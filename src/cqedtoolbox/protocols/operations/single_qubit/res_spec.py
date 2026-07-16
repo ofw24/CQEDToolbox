@@ -11,8 +11,9 @@ from labcore.measurement.storage import run_and_save_sweep
 from labcore.data.datadict_storage import datadict_from_hdf5
 from labcore.measurement import sweep_parameter, record_as
 
+from labcore.protocols import base as labcore_base
 from labcore.protocols.base import (ProtocolOperation, OperationStatus, serialize_fit_params,
-                                    ParamImprovement, CorrectionParameter, CheckResult, Correction)
+                                    ParamImprovement, CorrectionParameter, CheckResult, Correction, PlatformTypes)
 from cqedtoolbox.protocols.parameters import (Repetition,
                                               ResonatorSpecSteps, ReadoutGain, ReadoutLength, StartReadoutFrequency,
                                               EndReadoutFrequency, ReadoutFrequency)
@@ -360,14 +361,17 @@ class ResonatorSpectroscopy(ProtocolOperation):
             lambda: self.fit_result.params["f_0"].value,
         )
 
+        def _half_span():
+            return 5 if labcore_base.PLATFORMTYPE == PlatformTypes.QICK else 5e6
+
         self._register_success_update(
             self.start_frequency,
-            lambda: self.fit_result.params["f_0"].value - 5,
+            lambda: self.fit_result.params["f_0"].value - _half_span(),
         )
 
         self._register_success_update(
             self.end_frequency,
-            lambda: self.fit_result.params["f_0"].value + 5,
+            lambda: self.fit_result.params["f_0"].value + _half_span(),
         )
 
         self.condition = f"Success if the SNR of the measurement is bigger than the current threshold of " # {self.SNR_THRESHOLD}"
