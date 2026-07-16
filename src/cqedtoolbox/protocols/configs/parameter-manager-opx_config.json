@@ -431,10 +431,6 @@
     "unit": "",
     "value": 0.75
   },
-  "parameter_manager.corrections.t2e.max_echos": {
-    "unit": "",
-    "value": 3
-  },
   "parameter_manager.corrections.t2e.averaging_factor": {
     "unit": "",
     "value": 2.0

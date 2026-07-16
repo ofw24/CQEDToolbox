@@ -25,7 +25,6 @@ from cqedtoolbox.protocols.parameters import (
     ReadoutGain,
     ReadoutLength,
     T2E,
-    NEchos
 )
 from cqedtoolbox.measurement_lib.opx.advanced.qubit_tuneup import measure_t2
 from cqedtoolbox.measurement_lib.qick.single_transmon_v2 import T2nProgram
@@ -61,17 +60,6 @@ class MaxFitParamError(CorrectionParameter):
 
 
 @dataclass
-class MaxEchos(CorrectionParameter):
-    name: str = field(default="t2e_max_echos", init=False)
-    description: str = field(default="Maximum number of echo pulses to try", init=False)
-
-    def _qick_getter(self): return int(self.params.corrections.t2e.max_echos())
-    def _qick_setter(self, v): self.params.corrections.t2e.max_echos(v)
-    def _opx_getter(self): return int(self.params.corrections.t2e.max_echos())
-    def _opx_setter(self, v): self.params.corrections.t2e.max_echos(v)
-
-
-@dataclass
 class AveragingIncreaseFactor(CorrectionParameter):
     name: str = field(default="t2e_averaging_factor", init=False)
     description: str = field(default="Factor by which to increase repetitions", init=False)
@@ -93,51 +81,13 @@ class MaxAveragingIncreases(CorrectionParameter):
     def _opx_setter(self, v): self.params.corrections.t2e.max_averaging_increases(v)
 
 
-# ---------------------------------------------------------------------------
-# Correction subclasses
-# ---------------------------------------------------------------------------
-
-class IncreaseEchosCorrection(Correction):
-    name = "increase_echos"
-    description = "Increase number of echo pulses by 1"
-    triggered_by = "quality_check"
-
-    def __init__(self, n_echos_param, max_echos_param):
-        self.n_echos_param = n_echos_param
-        self.max_echos_param = max_echos_param
-        self._original_echos: int | None = None
-        self._last_change: str = ""
-
-    def can_apply(self) -> bool:
-        if self._original_echos is None:
-            self._original_echos = int(self.n_echos_param())
-        return int(self.n_echos_param()) < int(self.max_echos_param())
-
-    def apply(self) -> None:
-        if self._original_echos is None:
-            self._original_echos = int(self.n_echos_param())
-        old = int(self.n_echos_param())
-        new = old + 1
-        self.n_echos_param(new)
-        self._last_change = f"n_echos: {old} → {new}"
-
-    def report_output(self) -> str:
-        return self._last_change
-
-    def reset(self) -> None:
-        if self._original_echos is not None:
-            self.n_echos_param(self._original_echos)
-
-
 class IncreaseAveragingCorrection(Correction):
     name = "increase_averaging"
-    description = "Increase number of repetitions and reset echo count"
+    description = "Increase number of repetitions"
     triggered_by = "quality_check"
 
-    def __init__(self, reps_param, echo_correction: IncreaseEchosCorrection,
-                 factor_param, max_increases_param):
+    def __init__(self, reps_param, factor_param, max_increases_param):
         self.reps_param = reps_param
-        self.echo_correction = echo_correction
         self.factor_param = factor_param
         self.max_increases_param = max_increases_param
         self._original_reps: int | None = None
@@ -156,7 +106,6 @@ class IncreaseAveragingCorrection(Correction):
         self.reps_param(new)
         self._count += 1
         self._last_change = f"reps: {old} → {new}"
-        self.echo_correction.reset()
 
     def report_output(self) -> str:
         return self._last_change
@@ -184,7 +133,6 @@ class T2EOperation(ProtocolOperation):
             qubit_gain=QubitGain(params),
             readout_gain=ReadoutGain(params),
             readout_length=ReadoutLength(params),
-            n_echos=NEchos(params),
         )
         self._register_outputs(
             t2e=T2E(params)
@@ -193,14 +141,12 @@ class T2EOperation(ProtocolOperation):
         self._register_correction_params(
             snr_min_threshold=SNRMinThreshold(params),
             max_fit_param_error=MaxFitParamError(params),
-            max_echos=MaxEchos(params),
             averaging_increase_factor=AveragingIncreaseFactor(params),
             max_averaging_increases=MaxAveragingIncreases(params),
         )
 
         self._increase_averaging = IncreaseAveragingCorrection(
             self.repetitions,
-            self._increase_echos,
             self.averaging_increase_factor,
             self.max_averaging_increases,
         )
