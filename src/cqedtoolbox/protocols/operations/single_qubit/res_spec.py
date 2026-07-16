@@ -337,7 +337,7 @@ class ResonatorSpectroscopy(ProtocolOperation):
     _SIM_QI = 20e3
     _SIM_QC = 20e3
     _SIM_A = 4.0
-    _SIM_PHI = 0.0
+    _SIM_PHI = 0.4
     _SIM_NOISE_AMP = 0.05
 
     
