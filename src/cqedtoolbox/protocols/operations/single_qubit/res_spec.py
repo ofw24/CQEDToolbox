@@ -428,6 +428,10 @@ class ResonatorSpectroscopy(ProtocolOperation):
             self._check_quality,
             [self._window_shift, self._increase_sampling, self._increase_averaging],
         )
+        self._register_check(
+            "fit_in_range",
+            self._check_fit_in_range,
+        )
 
         self._register_success_update(
             self.readout_freq,
@@ -526,10 +530,7 @@ class ResonatorSpectroscopy(ProtocolOperation):
             unwound_real, unwound_imag, _ = unwind_signal(
                 frequencies, signal_raw, sign=sign
             )
-            if platform_type == PlatformTypes.OPX:
-                signal_unwind = unwound_real - 1j * unwound_imag
-            else:
-                signal_unwind = unwound_real + 1j * unwound_imag
+            signal_unwind = unwound_real + 1j * unwound_imag
             fit = fit_cls(frequencies, signal_unwind)
             fit_result = fit.run(fit)
             fit_curve = fit_result.eval()
@@ -596,7 +597,6 @@ class ResonatorSpectroscopy(ProtocolOperation):
         if self.snr is None or self.fit_result is None:
             raise RuntimeError("SNR and fit result must be set before checking quality")
 
-        # TODO: make sure that the fit frequency is inside the swept range
         threshold = self.snr_threshold()
         snr_passed = self.snr >= threshold
 
@@ -619,3 +619,19 @@ class ResonatorSpectroscopy(ProtocolOperation):
             parts.append(f"high-error params: {', '.join(bad_params)}")
 
         return CheckResult("quality_check", passed, "; ".join(parts))
+
+    def _check_fit_in_range(self) -> CheckResult:
+        if self.fit_result is None:
+            raise RuntimeError("Fit result must be set before checking fit range")
+
+        freqs = np.asarray(self.independents["frequencies"], dtype=float)
+        f0 = self.fit_result.params["f_0"].value
+        fmin = float(np.min(freqs))
+        fmax = float(np.max(freqs))
+        passed = fmin <= f0 <= fmax
+
+        return CheckResult(
+            "fit_in_range",
+            passed,
+            f"f_0={f0:.6g}, sweep=[{fmin:.6g}, {fmax:.6g}]",
+        )

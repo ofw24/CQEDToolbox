@@ -131,6 +131,8 @@ class ResonatorSpectroscopyAfterPi(ProtocolOperation):
 
         self._register_check("quality_check_before", self._check_quality_before, None)
         self._register_check("quality_check_after", self._check_quality_after, None)
+        self._register_check("fit_in_range_before", self._check_fit_in_range_before, None)
+        self._register_check("fit_in_range_after", self._check_fit_in_range_after, None)
         self._register_check("detuning_check", self._check_detuning, None)
         self._register_success_update(self.detuning, lambda: self.chi)
 
@@ -385,6 +387,28 @@ class ResonatorSpectroscopyAfterPi(ProtocolOperation):
 
     def _check_quality_after(self) -> CheckResult:
         return self._check_fit_quality(self.snr_after, self.fit_result_after, "quality_check_after")
+
+    def _check_fit_in_range(self, freqs, fit_result, check_name) -> CheckResult:
+        freqs = np.asarray(freqs, dtype=float)
+        f0 = fit_result.params["f_0"].value
+        fmin = float(np.min(freqs))
+        fmax = float(np.max(freqs))
+        passed = fmin <= f0 <= fmax
+        return CheckResult(check_name, passed, f"f_0={f0:.6g}, sweep=[{fmin:.6g}, {fmax:.6g}]")
+
+    def _check_fit_in_range_before(self) -> CheckResult:
+        return self._check_fit_in_range(
+            self.independents_before["frequencies"],
+            self.fit_result_before,
+            "fit_in_range_before",
+        )
+
+    def _check_fit_in_range_after(self) -> CheckResult:
+        return self._check_fit_in_range(
+            self.independents_after["frequencies"],
+            self.fit_result_after,
+            "fit_in_range_after",
+        )
 
     def _check_detuning(self) -> CheckResult:
         threshold = self.detuning_threshold()
