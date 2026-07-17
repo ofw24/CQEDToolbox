@@ -332,10 +332,12 @@ def background_filter(x, y):
     sm, sp = s0 - 0.5 * sabs.std(), s0 + 0.5 * sabs.std()
     return (sabs > sm) & (sabs < sp)
 
-def unwind_signal(x, y, f=None):
+def unwind_signal(x, y, platform_type, f=None):
     """Fit and remove the dominant sinusoidal loading from the complex signal."""
     x = np.asarray(x, dtype=float)
     y = np.asarray(y)
+
+    multiplier = -1 if platform_type == PlatformTypes.OPX else 1
 
     if f is None:
         bg = background_filter(x, y)
@@ -350,7 +352,7 @@ def unwind_signal(x, y, f=None):
         pi, _ = fit_sine(ixbg, iybg.imag)
         f = np.mean([pr[1], pi[1]])
 
-    unwound = y * np.exp(-1j * 2 * np.pi * f * x)
+    unwound = y * np.exp(1j * multiplier * 2 * np.pi * f * x)
     return unwound.real, unwound.imag, f
 
 
@@ -518,7 +520,7 @@ class ResonatorSpectroscopy(ProtocolOperation):
         signal_raw = np.asarray(signal_raw)
 
         magnitude = np.abs(signal_raw)
-        unwound_real, unwound_imag, _ = unwind_signal(frequencies, signal_raw)
+        unwound_real, unwound_imag, _ = unwind_signal(frequencies, signal_raw, platform_type)
         if platform_type == PlatformTypes.OPX:
             signal_unwind = unwound_real - 1j * unwound_imag
         else:
