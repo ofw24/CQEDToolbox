@@ -526,7 +526,10 @@ class ResonatorSpectroscopy(ProtocolOperation):
             unwound_real, unwound_imag, _ = unwind_signal(
                 frequencies, signal_raw, sign=sign
             )
-            signal_unwind = unwound_real + 1j * unwound_imag
+            if platform_type == PlatformTypes.OPX:
+                signal_unwind = unwound_real - 1j * unwound_imag
+            else:
+                signal_unwind = unwound_real + 1j * unwound_imag
             fit = fit_cls(frequencies, signal_unwind)
             fit_result = fit.run(fit)
             fit_curve = fit_result.eval()
