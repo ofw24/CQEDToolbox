@@ -16,7 +16,7 @@ from labcore.measurement import sweep_parameter
 from labcore.measurement.record import recording, dep, indep
 
 from labcore.protocols.base import (ProtocolOperation, OperationStatus, serialize_fit_params,
-                                    CorrectionParameter, CheckResult, Correction, EvaluateResult)
+                                    CorrectionParameter, CheckResult, Correction, EvaluateResult, PlatformTypes)
 from cqedtoolbox.protocols.parameters import (
     Repetition,
     StartReadoutFrequency,
@@ -355,14 +355,19 @@ class ResonatorSpectroscopyVsGain(ProtocolOperation):
             self.figure_paths.append(image_path)
 
             # Analyze each gain trace individually
-            gains = self.independents["gains"][0]
+            gains = self.independents["gains"]
             res_f_arr = []
 
             for i, g in enumerate(gains):
-                trace_signal = self.dependents["signal"].T[i]  # Transpose to achieve gain as axis 0
-                freqs = self.independents["frequencies"].T[i]
-
                 folder_name = f"resonator_spec_vs_gain_i={i}_g={g}"
+
+                # FIXME: is this the correct pattern for qick?
+                if self.platform_type == PlatformTypes.OPX:
+                    trace_signal = self.dependents["signal"][i]
+                    freqs = self.independents["frequencies"]
+                else:
+                    trace_signal = self.dependents["signal"].T[i]  # Transpose to achieve gain as axis 0
+                    freqs = self.independents["frequencies"].T[i]
 
                 # Use the static method from ResonatorSpectroscopy
                 ret = ResonatorSpectroscopy.add_mag_and_unwind_and_fit(
