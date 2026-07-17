@@ -353,6 +353,7 @@ def unwind_signal(x, y, f=None):
     unwound = y * np.exp(-1j * 2 * np.pi * f * x)
     return unwound.real, unwound.imag, f
 
+
 class ResonatorSpectroscopy(ProtocolOperation):
     _FIT_CLASSES = {
         "hanger": HangerResponseBruno,
@@ -366,7 +367,6 @@ class ResonatorSpectroscopy(ProtocolOperation):
     _SIM_A = 4.0
     _SIM_PHI = 0.0
     _SIM_NOISE_AMP = 0.05
-
     
     def __init__(self, params, geometry):
         super().__init__()
@@ -487,19 +487,42 @@ class ResonatorSpectroscopy(ProtocolOperation):
         logger.info("Dummy measurement complete")
         return loc
 
-    def add_mag_and_unwind_and_fit(self, frequencies, signal_raw, fig_title="") -> UnwindAndFitRet:
+    def _load_data_qick(self):
+        path = self.data_loc/"data.ddh5"
+        if not path.exists():
+            raise FileNotFoundError(f"File {path} does not exist")
+        data = datadict_from_hdf5(path)
+
+        self.independents["frequencies"] = data["freq"]["values"]
+        self.dependents["signal"] = data["signal"]["values"]
+
+    def _load_data_opx(self):
+        data = load_as_xr(self.data_loc).mean("repetition")
+        q = nestedAttributeFromString(self.params, "active.qubit")()
+        lo = nestedAttributeFromString(self.params, f"{q}.readout.LO")()
+        self.independents["frequencies"] = data["ssb_frequency"].values + lo
+        self.dependents["signal"] = data["signal_Re"].values - 1j * data["signal_Im"].values
+
+    def _load_data_dummy(self):
+        path = self.data_loc/"data.ddh5"
+        if not path.exists():
+            raise FileNotFoundError(f"File {path} does not exist")
+        data = datadict_from_hdf5(path)
+
+        self.independents["frequencies"] = data["frequencies"]["values"]
+        self.dependents["signal"] = data["signal"]["values"]
+
+    @staticmethod
+    def add_mag_and_unwind_and_fit(frequencies, signal_raw, platform_type, fit_cls, fig_title="") -> UnwindAndFitRet:
         frequencies = np.asarray(frequencies, dtype=float)
         signal_raw = np.asarray(signal_raw)
 
         magnitude = np.abs(signal_raw)
         unwound_real, unwound_imag, _ = unwind_signal(frequencies, signal_raw)
-        if self.platform_type == PlatformTypes.OPX:
-            signal_unwind = unwound_real - 1j * unwound_imag
-        else:
-            signal_unwind = unwound_real + 1j * unwound_imag
+        signal_unwind = unwound_real + 1j * unwound_imag
         phase = np.angle(signal_unwind)
 
-        fit = self._fit_cls(frequencies, signal_unwind)
+        fit = fit_cls(frequencies, signal_unwind)
         fit_result = fit.run(fit)
         fit_curve = fit_result.eval()
         residuals = signal_unwind - fit_curve
@@ -530,35 +553,12 @@ class ResonatorSpectroscopy(ProtocolOperation):
 
         return ret
 
-    def _load_data_qick(self):
-        path = self.data_loc/"data.ddh5"
-        if not path.exists():
-            raise FileNotFoundError(f"File {path} does not exist")
-        data = datadict_from_hdf5(path)
-
-        self.independents["frequencies"] = data["freq"]["values"]
-        self.dependents["signal"] = data["signal"]["values"]
-
-    def _load_data_opx(self):
-        data = load_as_xr(self.data_loc).mean("repetition")
-        q = nestedAttributeFromString(self.params, "active.qubit")()
-        lo = nestedAttributeFromString(self.params, f"{q}.readout.LO")()
-        self.independents["frequencies"] = data["ssb_frequency"].values + lo
-        self.dependents["signal"] = data["signal_Re"].values + 1j * data["signal_Im"].values
-
-    def _load_data_dummy(self):
-        path = self.data_loc/"data.ddh5"
-        if not path.exists():
-            raise FileNotFoundError(f"File {path} does not exist")
-        data = datadict_from_hdf5(path)
-
-        self.independents["frequencies"] = data["frequencies"]["values"]
-        self.dependents["signal"] = data["signal"]["values"]
-
     def analyze(self):
         with DatasetAnalysis(self.data_loc, self.name) as ds:
             ret = self.add_mag_and_unwind_and_fit(self.independents["frequencies"],
                                                   self.dependents["signal"],
+                                                  self.platform_type,
+                                                  self._fit_cls,
                                                   "Resonator Spectroscopy")
 
             self.unwind_signal = ret.signal_unwind
