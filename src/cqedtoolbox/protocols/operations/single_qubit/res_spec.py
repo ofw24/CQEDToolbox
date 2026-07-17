@@ -16,7 +16,7 @@ from labcore.data.datadict_storage import datadict_from_hdf5, load_as_xr
 from labcore.measurement import sweep_parameter, record_as
 
 from labcore.protocols.base import (ProtocolOperation, OperationStatus, serialize_fit_params,
-                                    ParamImprovement, CorrectionParameter, CheckResult, Correction)
+                                    ParamImprovement, CorrectionParameter, CheckResult, Correction, PlatformTypes)
 from cqedtoolbox.protocols.parameters import (Repetition,
                                               ResonatorSpecSteps, ReadoutGain, ReadoutLength, StartReadoutFrequency,
                                               EndReadoutFrequency, ReadoutFrequency, nestedAttributeFromString)
@@ -493,7 +493,10 @@ class ResonatorSpectroscopy(ProtocolOperation):
 
         magnitude = np.abs(signal_raw)
         unwound_real, unwound_imag, _ = unwind_signal(frequencies, signal_raw)
-        signal_unwind = unwound_real + 1j * unwound_imag
+        if self.platform_type == PlatformTypes.OPX:
+            signal_unwind = unwound_real - 1j * unwound_imag
+        else:
+            signal_unwind = unwound_real + 1j * unwound_imag
         phase = np.angle(signal_unwind)
 
         fit = self._fit_cls(frequencies, signal_unwind)
@@ -541,7 +544,7 @@ class ResonatorSpectroscopy(ProtocolOperation):
         q = nestedAttributeFromString(self.params, "active.qubit")()
         lo = nestedAttributeFromString(self.params, f"{q}.readout.LO")()
         self.independents["frequencies"] = data["ssb_frequency"].values + lo
-        self.dependents["signal"] = data["signal_Re"].values - 1j * data["signal_Im"].values
+        self.dependents["signal"] = data["signal_Re"].values + 1j * data["signal_Im"].values
 
     def _load_data_dummy(self):
         path = self.data_loc/"data.ddh5"
