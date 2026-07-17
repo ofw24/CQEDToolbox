@@ -436,12 +436,12 @@ class ResonatorSpectroscopy(ProtocolOperation):
 
         self._register_success_update(
             self.start_frequency,
-            lambda: self.fit_result.params["f_0"].value - 5e6 if self.platform_type == PlatformTypes.OPX else self.fit_result.params["f_0"].value - 5,
+            lambda: self.fit_result.params["f_0"].value - 5 if self.platform_type == PlatformTypes.QICK else self.fit_result.params["f_0"].value - 5e6,
         )
 
         self._register_success_update(
             self.end_frequency,
-            lambda: self.fit_result.params["f_0"].value + 5e6 if self.platform_type == PlatformTypes.OPX else self.fit_result.params["f_0"].value + 5,
+            lambda: self.fit_result.params["f_0"].value + 5 if self.platform_type == PlatformTypes.QICK else self.fit_result.params["f_0"].value + 5e6,
         )
 
         self.condition = f"Success if the SNR of the measurement is bigger than the current threshold of " # {self.SNR_THRESHOLD}"
