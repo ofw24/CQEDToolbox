@@ -7,8 +7,6 @@ import matplotlib.pyplot as plt
 
 plt.switch_backend("agg")
 
-
-from cqedtoolbox.fitfuncs.resonators import HangerResponseBruno, ReflectionResponse, TransmissionResponse
 from labcore.analysis import DatasetAnalysis
 from labcore.measurement.storage import run_and_save_sweep
 from labcore.data.datadict_storage import datadict_from_hdf5, load_as_xr
@@ -17,6 +15,7 @@ from labcore.measurement.record import recording, dep, indep
 
 from labcore.protocols.base import (ProtocolOperation, OperationStatus, serialize_fit_params,
                                     CorrectionParameter, CheckResult, Correction, EvaluateResult, PlatformTypes)
+from cqedtoolbox.protocols.operations import ResonatorGeometry
 from cqedtoolbox.protocols.parameters import (
     Repetition,
     StartReadoutFrequency,
@@ -25,7 +24,10 @@ from cqedtoolbox.protocols.parameters import (
     ReadoutLength, StartReadoutGain, EndReadoutGain, ResonatorSpecSteps, ResonatorSpecVsGainSteps,
     nestedAttributeFromString,
 )
-from cqedtoolbox.protocols.operations.single_qubit.res_spec import ResonatorSpectroscopy, SyntheticHangerResonatorData
+from cqedtoolbox.protocols.operations.single_qubit.res_spec import (
+    ResonatorSpectroscopy,
+    SyntheticHangerResonatorData,
+)
 from cqedtoolbox.measurement_lib.opx.advanced.qubit_tuneup import measure_pulse_resonator_spec_vs_readout_amp
 from cqedtoolbox.measurement_lib.qick.single_transmon_v2 import FreqGainSweepProgram
 
@@ -157,22 +159,21 @@ class ResonatorSpectroscopyVsGain(ProtocolOperation):
 
     _SIM_N_GAIN_STEPS = 11
 
-    _FIT_CLASSES = {
-        "hanger": HangerResponseBruno,
-        "reflection": ReflectionResponse,
-        "transmission": TransmissionResponse,
-    }
-
-    def __init__(self, params, geometry):
+    def __init__(self, params, geometry: ResonatorGeometry | str):
         super().__init__()
         self.params = params
 
-        if geometry not in self._FIT_CLASSES:
-            valid = ", ".join(sorted(self._FIT_CLASSES))
-            raise ValueError(f"Unsupported resonator geometry '{geometry}'. Expected one of: {valid}")
-        
+        if isinstance(geometry, str):
+            try:
+                geometry = ResonatorGeometry(geometry.lower())
+            except ValueError as err:
+                valid = ", ".join(g.value for g in ResonatorGeometry)
+                raise ValueError(
+                    f"Unsupported resonator geometry '{geometry}'. Expected one of: {valid}"
+                ) from err
+
         self.geometry = geometry
-        self._fit_cls = self._FIT_CLASSES[geometry]
+        self._fit_cls = geometry.fit_cls
 
         self._register_inputs(
             repetitions=Repetition(params),

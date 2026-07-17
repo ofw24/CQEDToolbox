@@ -17,6 +17,7 @@ from labcore.measurement import sweep_parameter, record_as
 
 from labcore.protocols.base import (ProtocolOperation, OperationStatus, serialize_fit_params,
                                     ParamImprovement, CorrectionParameter, CheckResult, Correction, PlatformTypes)
+from cqedtoolbox.protocols.operations import ResonatorGeometry
 from cqedtoolbox.protocols.parameters import (Repetition,
                                               ResonatorSpecSteps, ReadoutGain, ReadoutLength, StartReadoutFrequency,
                                               EndReadoutFrequency, ReadoutFrequency, nestedAttributeFromString)
@@ -357,12 +358,6 @@ def unwind_signal(x, y, platform_type, f=None):
 
 
 class ResonatorSpectroscopy(ProtocolOperation):
-    _FIT_CLASSES = {
-        "hanger": HangerResponseBruno,
-        "reflection": ReflectionResponse,
-        "transmission": TransmissionResponse,
-    }
-
     _SIM_F0 = 7e9
     _SIM_QI = 20e3
     _SIM_QC = 20e3
@@ -370,16 +365,21 @@ class ResonatorSpectroscopy(ProtocolOperation):
     _SIM_PHI = 0.0
     _SIM_NOISE_AMP = 0.05
     
-    def __init__(self, params, geometry):
+    def __init__(self, params, geometry: ResonatorGeometry | str):
         super().__init__()
         self.params = params
 
-        if geometry not in self._FIT_CLASSES:
-            valid = ", ".join(sorted(self._FIT_CLASSES))
-            raise ValueError(f"Unsupported resonator geometry '{geometry}'. Expected one of: {valid}")
-        
+        if isinstance(geometry, str):
+            try:
+                geometry = ResonatorGeometry(geometry.lower())
+            except ValueError as err:
+                valid = ", ".join(g.value for g in ResonatorGeometry)
+                raise ValueError(
+                    f"Unsupported resonator geometry '{geometry}'. Expected one of: {valid}"
+                ) from err
+
         self.geometry = geometry
-        self._fit_cls = self._FIT_CLASSES[geometry]
+        self._fit_cls = geometry.fit_cls
 
         self._register_inputs(
             repetitions=Repetition(params),
