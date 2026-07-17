@@ -16,7 +16,7 @@ from labcore.data.datadict_storage import datadict_from_hdf5, load_as_xr
 
 from labcore.protocols.base import (
     ProtocolOperation, PlatformTypes, serialize_fit_params,
-    CorrectionParameter, CheckResult, Correction, EvaluateResult, PlatformType
+    CorrectionParameter, CheckResult, Correction, EvaluateResult, PlatformTypes
 )
 from cqedtoolbox.protocols.parameters import (
     Repetition,
