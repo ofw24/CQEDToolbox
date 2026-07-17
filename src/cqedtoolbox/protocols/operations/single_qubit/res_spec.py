@@ -343,15 +343,15 @@ def unwind_signal(x, y, f=None):
             bg = np.ones(len(x), dtype=bool)
 
         xbg, ybg = x[bg], y[bg]
-        ybg_real = np.interp(x, xbg, ybg.real)
-        ybg_imag = np.interp(x, xbg, ybg.imag)
+        ixbg = np.linspace(x[0], x[-1], x.size)
+        iybg = np.interp(ixbg, xbg, ybg)
 
-        pr, _ = fit_sine(x, ybg_real)
-        pi, _ = fit_sine(x, ybg_imag)
+        pr, _ = fit_sine(ixbg, iybg.real)
+        pi, _ = fit_sine(ixbg, iybg.imag)
         f = np.mean([pr[1], pi[1]])
 
-    unwound_signal = y * np.exp(1j * 2 * np.pi * f * x)
-    return unwound_signal, f
+    unwound = y * np.exp(-1j * 2 * np.pi * f * x)
+    return unwound.real, unwound.imag, f
 
 class ResonatorSpectroscopy(ProtocolOperation):
 
@@ -481,7 +481,8 @@ class ResonatorSpectroscopy(ProtocolOperation):
         signal_raw = np.asarray(signal_raw)
 
         magnitude = np.abs(signal_raw)
-        signal_unwind, _ = unwind_signal(frequencies, signal_raw)
+        unwound_real, unwound_imag, _ = unwind_signal(frequencies, signal_raw)
+        signal_unwind = unwound_real + 1j * unwound_imag
         phase = np.angle(signal_unwind)
 
         fit = HangerResponseBruno(frequencies, signal_unwind)
