@@ -6,6 +6,10 @@ import numpy as np
 from numpy.typing import ArrayLike
 import matplotlib.pyplot as plt
 
+from scipy.signal import savgol_filter
+from scipy.interpolate import CubicSpline
+from scipy.optimize import curve_fit
+
 from labcore.analysis import DatasetAnalysis, FitResult
 from labcore.measurement.storage import run_and_save_sweep
 from labcore.data.datadict_storage import datadict_from_hdf5, load_as_xr
@@ -286,7 +290,68 @@ class IncreaseAveragingCorrection(Correction):
 
     def report_output(self) -> str:
         return self._last_change
+    
 
+def fit_sine(t, data):
+    """Fit a sine wave to the given data."""
+    t = np.asarray(t, dtype=float)
+    data = np.asarray(data, dtype=float)
+
+    def sine_function(x, amplitude, frequency, phase, offset):
+        return amplitude * np.sin(2 * np.pi * frequency * x + phase) + offset
+
+    y_offset = np.mean(data)
+    amplitude = (np.max(data) - np.min(data)) / 2
+
+    fft = np.fft.fft(data - y_offset)
+    freqs = np.fft.fftfreq(len(data), d=t[1] - t[0])
+    positive = np.argmax(np.abs(fft[1:len(fft) // 2 + 1])) + 1 if len(fft) > 2 else 0
+    frequency = np.abs(freqs[positive])
+    phase = np.angle(fft[positive]) if positive else 0.0
+
+    initial_guess = (amplitude, frequency, phase, y_offset)
+    params, covariance = curve_fit(sine_function, t, data, p0=initial_guess, maxfev=5000)
+    return params, covariance
+
+def background_filter(x, y):
+    window_size = 8
+
+    def moving_window_variance(data):
+        half_window = window_size // 2
+        padded_data = np.pad(data, (half_window, half_window), mode="reflect")
+        return np.array([np.var(padded_data[i:i + window_size]) for i in range(len(data))])
+
+    def filtered_variance(x, y):
+        smooth = savgol_filter(y, window_size, 1)
+        spline_derivative = CubicSpline(x, smooth)(y, 1)
+        return savgol_filter(moving_window_variance(spline_derivative), window_size, 1)
+
+    s = filtered_variance(x, y.real) + 1j * filtered_variance(x, y.imag)
+    sabs = np.abs(s)
+    s0 = np.median(sabs)
+    sm, sp = s0 - 0.5 * sabs.std(), s0 + 0.5 * sabs.std()
+    return (sabs > sm) & (sabs < sp)
+
+def unwind_signal(x, y, f=None):
+    """Fit and remove the dominant sinusoidal loading from the complex signal."""
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y)
+
+    if f is None:
+        bg = background_filter(x, y)
+        if np.count_nonzero(bg) < 5:
+            bg = np.ones(len(x), dtype=bool)
+
+        xbg, ybg = x[bg], y[bg]
+        ybg_real = np.interp(x, xbg, ybg.real)
+        ybg_imag = np.interp(x, xbg, ybg.imag)
+
+        pr, _ = fit_sine(x, ybg_real)
+        pi, _ = fit_sine(x, ybg_imag)
+        f = np.mean([pr[1], pi[1]])
+
+    unwound_signal = y * np.exp(1j * 2 * np.pi * f * x)
+    return unwound_signal, f
 
 class ResonatorSpectroscopy(ProtocolOperation):
 
@@ -412,12 +477,12 @@ class ResonatorSpectroscopy(ProtocolOperation):
 
     @staticmethod
     def add_mag_and_unwind_and_fit(frequencies, signal_raw, fig_title="") -> UnwindAndFitRet:
-        phase_unwrap = np.unwrap(np.angle(signal_raw))
-        phase_slope = np.polyfit(frequencies, phase_unwrap, 1)[0]
+        frequencies = np.asarray(frequencies, dtype=float)
+        signal_raw = np.asarray(signal_raw)
 
-        signal_unwind = signal_raw * np.exp(-1j * frequencies * phase_slope)
         magnitude = np.abs(signal_raw)
-        phase = np.arctan2(signal_unwind.imag, signal_unwind.real)
+        signal_unwind, _ = unwind_signal(frequencies, signal_raw)
+        phase = np.angle(signal_unwind)
 
         fit = HangerResponseBruno(frequencies, signal_unwind)
         fit_result = fit.run(fit)
@@ -481,6 +546,7 @@ class ResonatorSpectroscopy(ProtocolOperation):
                                                   self.dependents["signal"],
                                                   "Resonator Spectroscopy")
 
+            self.unwind_signal = ret.signal_unwind
             self.magnitude = ret.magnitude
             self.phase = ret.phase
             self.snr = ret.snr
