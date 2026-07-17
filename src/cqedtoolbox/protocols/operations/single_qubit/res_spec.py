@@ -501,7 +501,7 @@ class ResonatorSpectroscopy(ProtocolOperation):
         q = nestedAttributeFromString(self.params, "active.qubit")()
         lo = nestedAttributeFromString(self.params, f"{q}.readout.LO")()
         self.independents["frequencies"] = data["ssb_frequency"].values + lo
-        self.dependents["signal"] = data["signal_Re"].values - 1j * data["signal_Im"].values
+        self.dependents["signal"] = data["signal_Re"].values + 1j * data["signal_Im"].values
 
     def _load_data_dummy(self):
         path = self.data_loc/"data.ddh5"
@@ -519,7 +519,10 @@ class ResonatorSpectroscopy(ProtocolOperation):
 
         magnitude = np.abs(signal_raw)
         unwound_real, unwound_imag, _ = unwind_signal(frequencies, signal_raw)
-        signal_unwind = unwound_real + 1j * unwound_imag
+        if platform_type == PlatformTypes.OPX:
+            signal_unwind = unwound_real - 1j * unwound_imag
+        else:
+            signal_unwind = unwound_real + 1j * unwound_imag
         phase = np.angle(signal_unwind)
 
         fit = fit_cls(frequencies, signal_unwind)
