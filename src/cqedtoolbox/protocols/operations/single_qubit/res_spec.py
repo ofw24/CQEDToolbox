@@ -38,7 +38,9 @@ class UnwindAndFitRet:
     fit_curve: ArrayLike
     fit_result: FitResult
     residuals: ArrayLike
+    residual_std: float
     snr: float
+    unwind_sign: int
     fig: plt.Figure
     ax: plt.Axes
 
@@ -333,12 +335,10 @@ def background_filter(x, y):
     sm, sp = s0 - 0.5 * sabs.std(), s0 + 0.5 * sabs.std()
     return (sabs > sm) & (sabs < sp)
 
-def unwind_signal(x, y, platform_type, f=None):
+def unwind_signal(x, y, f=None, sign=1):
     """Fit and remove the dominant sinusoidal loading from the complex signal."""
     x = np.asarray(x, dtype=float)
     y = np.asarray(y)
-
-    multiplier = -1 if platform_type == PlatformTypes.OPX else 1
 
     if f is None:
         bg = background_filter(x, y)
@@ -353,7 +353,7 @@ def unwind_signal(x, y, platform_type, f=None):
         pi, _ = fit_sine(ixbg, iybg.imag)
         f = np.mean([pr[1], pi[1]])
 
-    unwound = y * np.exp(1j * multiplier * 2 * np.pi * f * x)
+    unwound = y * np.exp(1j * sign * 2 * np.pi * f * x)
     return unwound.real, unwound.imag, f
 
 
@@ -520,21 +520,27 @@ class ResonatorSpectroscopy(ProtocolOperation):
         signal_raw = np.asarray(signal_raw)
 
         magnitude = np.abs(signal_raw)
-        unwound_real, unwound_imag, _ = unwind_signal(frequencies, signal_raw, platform_type)
-        if platform_type == PlatformTypes.OPX:
-            signal_unwind = unwound_real - 1j * unwound_imag
-        else:
+        del platform_type
+
+        def fit_candidate(sign: int):
+            unwound_real, unwound_imag, _ = unwind_signal(
+                frequencies, signal_raw, sign=sign
+            )
             signal_unwind = unwound_real + 1j * unwound_imag
+            fit = fit_cls(frequencies, signal_unwind)
+            fit_result = fit.run(fit)
+            fit_curve = fit_result.eval()
+            residuals = signal_unwind - fit_curve
+            residual_std = float(np.std(residuals))
+            amp = fit_result.params["A"].value
+            snr = np.abs(amp / (4 * residual_std)) if residual_std > 0 else float("inf")
+            return signal_unwind, fit_result, fit_curve, residuals, residual_std, snr
+
+        candidates = [fit_candidate(sign) for sign in (1, -1)]
+        best_idx = min(range(len(candidates)), key=lambda i: candidates[i][4])
+        signal_unwind, fit_result, fit_curve, residuals, residual_std, snr = candidates[best_idx]
+        unwind_sign = 1 if best_idx == 0 else -1
         phase = np.angle(signal_unwind)
-
-        fit = fit_cls(frequencies, signal_unwind)
-        fit_result = fit.run(fit)
-        fit_curve = fit_result.eval()
-        residuals = signal_unwind - fit_curve
-
-        amp = fit_result.params["A"].value
-        noise = np.std(residuals)
-        snr = np.abs(amp / (4 * noise))
 
         fig, ax = plt.subplots()
         ax.set_title(fig_title)
@@ -551,7 +557,9 @@ class ResonatorSpectroscopy(ProtocolOperation):
             fit_curve=fit_curve,
             fit_result=fit_result,
             residuals=residuals,
+            residual_std=residual_std,
             snr=snr,
+            unwind_sign=unwind_sign,
             fig=fig,
             ax=ax,
         )
