@@ -25,7 +25,6 @@ from cqedtoolbox.protocols.parameters import (
     ReadoutGain,
     ReadoutLength,
     T2R,
-    NEchos
 )
 from cqedtoolbox.measurement_lib.opx.advanced.qubit_tuneup import measure_t2
 from cqedtoolbox.measurement_lib.qick.single_transmon_v2 import T2RProgram
@@ -139,7 +138,6 @@ class T2ROperation(ProtocolOperation):
             qubit_gain=QubitGain(params),
             readout_gain=ReadoutGain(params),
             readout_length=ReadoutLength(params),
-            n_echos=NEchos(params)
         )
         self._register_outputs(
             t2r=T2R(params)

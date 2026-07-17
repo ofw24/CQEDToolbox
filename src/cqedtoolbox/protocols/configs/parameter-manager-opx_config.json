@@ -35,6 +35,10 @@
     "unit": "",
     "value": null
   },
+  "parameter_manager.q01.chi": {
+    "unit": "Hz",
+    "value": 1e6
+  },
   "parameter_manager.q01.IF": {
     "unit": "Hz",
     "value": 124085680.0
