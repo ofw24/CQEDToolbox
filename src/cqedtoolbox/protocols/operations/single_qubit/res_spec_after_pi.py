@@ -416,7 +416,8 @@ class ResonatorSpectroscopyAfterPi(ProtocolOperation):
         self.report_output.extend([header, plot_combined])
 
         result = super().correct(result)  # adds check table; no auto-figure since list is empty
-
+        
+        # FIXME: units for qick and OPX need to be reconciled here
         self.report_output.append(
             f"**Detuning (χ): {self.chi:.3f} MHz** "
             f"(f_0 before: {self.f0_before:.3f} MHz, f_0 after: {self.f0_after:.3f} MHz)\n\n"

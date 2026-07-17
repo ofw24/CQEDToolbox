@@ -407,6 +407,7 @@ class ResonatorSpectroscopyVsGain(ProtocolOperation):
 
             self.resonance_frequencies = res_f_arr
 
+            # FIXME: I don't know if this is how we should choose gain. -Oliver
             # Find optimal gain: highest-SNR trace that passes the full quality check
             snr_threshold = self.snr_threshold()
             max_error = self.max_fit_param_error()

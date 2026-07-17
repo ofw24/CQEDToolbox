@@ -16,7 +16,7 @@ from labcore.data.datadict_storage import datadict_from_hdf5, load_as_xr
 
 from labcore.protocols.base import (
     ProtocolOperation, PlatformTypes, serialize_fit_params,
-    CorrectionParameter, CheckResult, Correction, EvaluateResult,
+    CorrectionParameter, CheckResult, Correction, EvaluateResult, PlatformType
 )
 from cqedtoolbox.protocols.parameters import (
     Repetition,
@@ -219,7 +219,10 @@ class T2EOperation(ProtocolOperation):
 
         fig, ax = plt.subplots()
         ax.set_title(fig_title)
-        ax.set_xlabel("Delay (μs)")
+        if self.platform_type == PlatformTypes.OPX:
+            ax.set_xlabel("Delay (ns)")
+        else:
+            ax.set_xlabel("Delay (μs)")
         ax.set_ylabel("Rotated Signal (A.U)")
         ax.plot(delays, signal, label="Data")
         ax.plot(delays, fit_curve, label="Fit")
