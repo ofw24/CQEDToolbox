@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 plt.switch_backend("agg")
 
 
+from cqedtoolbox.fitfuncs.resonators import HangerResponseBruno, ReflectionResponse, TransmissionResponse
 from labcore.analysis import DatasetAnalysis
 from labcore.measurement.storage import run_and_save_sweep
 from labcore.data.datadict_storage import datadict_from_hdf5, load_as_xr
@@ -156,9 +157,22 @@ class ResonatorSpectroscopyVsGain(ProtocolOperation):
 
     _SIM_N_GAIN_STEPS = 11
 
-    def __init__(self, params):
+    _FIT_CLASSES = {
+        "hanger": HangerResponseBruno,
+        "reflection": ReflectionResponse,
+        "transmission": TransmissionResponse,
+    }
+
+    def __init__(self, params, geometry):
         super().__init__()
         self.params = params
+
+        if geometry not in self._FIT_CLASSES:
+            valid = ", ".join(sorted(self._FIT_CLASSES))
+            raise ValueError(f"Unsupported resonator geometry '{geometry}'. Expected one of: {valid}")
+        
+        self.geometry = geometry
+        self._fit_cls = self._FIT_CLASSES[geometry]
 
         self._register_inputs(
             repetitions=Repetition(params),
@@ -352,7 +366,7 @@ class ResonatorSpectroscopyVsGain(ProtocolOperation):
 
                 # Use the static method from ResonatorSpectroscopy
                 ret = ResonatorSpectroscopy.add_mag_and_unwind_and_fit(
-                    freqs, trace_signal, f"Gain = {g}"
+                    freqs, trace_signal, self.platform_type, self._fit_cls, f"Gain = {g}"
                 )
 
                 _excluded = {"transmission_slope", "phase_slope", "phase_offset"}
@@ -366,7 +380,7 @@ class ResonatorSpectroscopyVsGain(ProtocolOperation):
                         f"{_null_stderr_params} — re-fitting"
                     )
                     ret = ResonatorSpectroscopy.add_mag_and_unwind_and_fit(
-                        freqs, trace_signal, f"Gain = {g}"
+                        freqs, trace_signal, self.platform_type, self._fit_cls, f"Gain = {g}"
                     )
 
                 self.fit_results.append(ret.fit_result)
