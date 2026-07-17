@@ -23,7 +23,7 @@ from cqedtoolbox.protocols.parameters import (Repetition,
 from cqedtoolbox.measurement_lib.opx.advanced.qubit_tuneup import measure_pulse_resonator_spec
 from cqedtoolbox.measurement_lib.qick.single_transmon_v2 import FreqSweepProgram
 
-from cqedtoolbox.fitfuncs.resonators import HangerResponseBruno
+from cqedtoolbox.fitfuncs.resonators import HangerResponseBruno, ReflectionResponse, TransmissionResponse
 
 
 logger = logging.getLogger(__name__)
@@ -354,6 +354,11 @@ def unwind_signal(x, y, f=None):
     return unwound.real, unwound.imag, f
 
 class ResonatorSpectroscopy(ProtocolOperation):
+    _FIT_CLASSES = {
+        "hanger": HangerResponseBruno,
+        "reflection": ReflectionResponse,
+        "transmission": TransmissionResponse,
+    }
 
     _SIM_F0 = 7e9
     _SIM_QI = 20e3
@@ -363,9 +368,16 @@ class ResonatorSpectroscopy(ProtocolOperation):
     _SIM_NOISE_AMP = 0.05
 
     
-    def __init__(self, params):
+    def __init__(self, params, geometry):
         super().__init__()
         self.params = params
+
+        if geometry not in self._FIT_CLASSES:
+            valid = ", ".join(sorted(self._FIT_CLASSES))
+            raise ValueError(f"Unsupported resonator geometry '{geometry}'. Expected one of: {valid}")
+        
+        self.geometry = geometry
+        self._fit_cls = self._FIT_CLASSES[geometry]
 
         self._register_inputs(
             repetitions=Repetition(params),
@@ -475,8 +487,7 @@ class ResonatorSpectroscopy(ProtocolOperation):
         logger.info("Dummy measurement complete")
         return loc
 
-    @staticmethod
-    def add_mag_and_unwind_and_fit(frequencies, signal_raw, fig_title="") -> UnwindAndFitRet:
+    def add_mag_and_unwind_and_fit(self, frequencies, signal_raw, fig_title="") -> UnwindAndFitRet:
         frequencies = np.asarray(frequencies, dtype=float)
         signal_raw = np.asarray(signal_raw)
 
@@ -485,7 +496,7 @@ class ResonatorSpectroscopy(ProtocolOperation):
         signal_unwind = unwound_real + 1j * unwound_imag
         phase = np.angle(signal_unwind)
 
-        fit = HangerResponseBruno(frequencies, signal_unwind)
+        fit = self._fit_cls(frequencies, signal_unwind)
         fit_result = fit.run(fit)
         fit_curve = fit_result.eval()
         residuals = signal_unwind - fit_curve
@@ -530,7 +541,7 @@ class ResonatorSpectroscopy(ProtocolOperation):
         q = nestedAttributeFromString(self.params, "active.qubit")()
         lo = nestedAttributeFromString(self.params, f"{q}.readout.LO")()
         self.independents["frequencies"] = data["ssb_frequency"].values + lo
-        self.dependents["signal"] = data["signal_Re"].values + 1j * data["signal_Im"].values
+        self.dependents["signal"] = data["signal_Re"].values - 1j * data["signal_Im"].values
 
     def _load_data_dummy(self):
         path = self.data_loc/"data.ddh5"
