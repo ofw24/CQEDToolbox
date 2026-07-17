@@ -685,6 +685,7 @@ class SaturationSpectroscopy(ProtocolOperation):
         return CheckResult("fit_quality", passed, "; ".join(parts))
 
     def _check_single_peak(self) -> CheckResult:
+        # TODO: make sure that the fit frequency is inside the swept range
         residuals = self.residuals
         frequencies = self.independents["frequencies"]
 

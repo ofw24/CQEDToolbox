@@ -585,6 +585,7 @@ class ResonatorSpectroscopy(ProtocolOperation):
         if self.snr is None or self.fit_result is None:
             raise RuntimeError("SNR and fit result must be set before checking quality")
 
+        # TODO: make sure that the fit frequency is inside the swept range
         threshold = self.snr_threshold()
         snr_passed = self.snr >= threshold
 

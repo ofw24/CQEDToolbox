@@ -520,7 +520,7 @@ class ResonatorSpectroscopyVsGain(ProtocolOperation):
         result = super().correct(result)  # check table + success update (writes readout_gain)
 
         if result.status == OperationStatus.SUCCESS:
-            gains = self.independents["gains"][0]
+            gains = self.independents["gains"]
             self.report_output.append("\n### Individual Gain Traces\n")
             for i, (fig_path, g) in enumerate(zip(trace_figures, gains)):
                 self.report_output.extend([

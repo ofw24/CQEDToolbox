@@ -265,6 +265,7 @@ class PiSpectroscopy(ProtocolOperation):
             self.figure_paths.append(image_path)
 
     def _check_quality(self) -> CheckResult:
+        # TODO: make sure that the fit frequency is inside the swept range
         threshold = self.snr_threshold()
         snr_passed = self.snr >= threshold
 
