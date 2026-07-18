@@ -13,8 +13,8 @@ from labcore.analysis.fit import Fit, FitResult
 class ReflectionResponse(Fit):
 
     @staticmethod
-    def model(coordinates: np.ndarray, A: float, f_0: float, Q_i: float, Q_e: float, phase_offset: float,
-              phase_slope: float):
+    def model(coordinates: np.ndarray, A: float, f_0: float, Q_i: float, Q_e: float, theta: float,
+              phase_offset: float, phase_slope: float, transmission_slope: float):
         """
         Reflection response model derived from input-output theory. For detail, see section 12.2.6 in "Quantum
         and Atom Optics" by Daniel Adam Steck
@@ -30,13 +30,17 @@ class ReflectionResponse(Fit):
         Q_i
             internal Q (coupling to losses of the cavity)
         Q_e
-            external Q (coupling to output pins)
+            magnitude of the external Q (coupling to output pins)
+        theta
+            rotation angle of the complex external Q that accounts for impedance mismatch and reference plane errors
         phase_offset
             the offset of phase curve which can be seen at the start and end point of the phase diagram of reflection
             response
         phase_slope
             the slope of phase curve which can be seen at the start and end point of the phase diagram of reflection
             response
+        transmission_slope
+            linear magnitude slope of the measurement background across the sweep window
 
         Returns
         -------
@@ -44,10 +48,17 @@ class ReflectionResponse(Fit):
             the ideal response calculated with the equation
         """
         x = coordinates
-        s11_ideal = (1j * (1 - x / f_0) + (Q_i - Q_e) / (2 * Q_e * Q_i)) / (
-                    1j * (1 - x / f_0) - (Q_i + Q_e) / (2 * Q_e * Q_i))
-        correction = A * np.exp(1j * (phase_offset + phase_slope * (x - f_0)))
-        return s11_ideal * correction
+        amp_correction = A * (1 + transmission_slope * (x - f_0) / f_0)
+        phase_correction = np.exp(1j * (phase_offset + phase_slope * (x - f_0)))
+
+        if Q_e == 0:
+            Q_e = 1e-12
+        Q_e_complex = Q_e * np.exp(-1j * theta)
+        Q_c = 1. / np.real(1. / Q_e_complex)
+        Q_l = 1. / (1. / Q_c + 1. / Q_i)
+        response = 1 - 2 * Q_l / Q_e_complex / (1. + 2j * Q_l * (x - f_0) / f_0)
+
+        return response * amp_correction * phase_correction
 
     @staticmethod
     def guess(coordinates: np.ndarray, data: np.ndarray):
@@ -64,35 +75,48 @@ class ReflectionResponse(Fit):
         Returns
         -------
         dict
-            a dictionary whose values are the guess on A, f_0, Q_i, Q_e, phase_offset, and phase slope and keys
-            contain their names
+            a dictionary whose values are the guess on A, f_0, Q_i, Q_e, theta, phase_offset, phase slope, and
+            transmission_slope and keys contain their names
         """
+        edge_count = max(data.size // 10, 2)
+        edge_idx = np.concatenate((np.arange(edge_count), np.arange(data.size - edge_count, data.size)))
+        edge_freq = coordinates[edge_idx]
 
-        amp = np.abs(np.concatenate((data[:data.size // 10], data[-data.size // 10:]))).mean()
+        edge_amp = np.abs(data[edge_idx])
+        transmission_slope, amp_intercept = np.polyfit(edge_freq - coordinates.mean(), edge_amp, 1)
+        amp_line = transmission_slope * (coordinates - coordinates.mean()) + amp_intercept
+
+        amp = np.abs(np.concatenate((data[:edge_count], data[-edge_count:]))).mean()
         dip_loc = np.argmax(np.abs(np.abs(data) - amp))
         guess_f_0 = coordinates[dip_loc]
 
-        data = moving_average(data)
-        depth = amp - np.abs(data[dip_loc])
-        width_loc = np.argmin(np.abs(amp - np.abs(data) - depth / 2))
-        kappa = 2 * np.abs(coordinates[dip_loc] - coordinates[width_loc])
-        guess_Q_tot = guess_f_0 / kappa
-        # print(guess_Q_tot)
+        amp_at_f0 = transmission_slope * (guess_f_0 - coordinates.mean()) + amp_intercept
 
-        [slope, _] = np.polyfit(coordinates[:data.size // 10], np.angle(data[:data.size // 10], deg=False), 1)
-        phase_offset = np.angle(data[0]) + slope * (coordinates[dip_loc] - coordinates[0])
-        correction = amp * np.exp(1j * phase_offset)
-        # print(data[dip_loc]/correction)
-        guess_Q_e = 2 * guess_Q_tot / (1 - np.abs(data[dip_loc]/correction))
+        data = moving_average(data)
+        depth = amp_at_f0 - np.abs(data[dip_loc])
+        width_loc = np.argmin(np.abs(amp_line - np.abs(data) - depth / 2))
+        kappa = 2 * np.abs(coordinates[dip_loc] - coordinates[width_loc])
+        guess_Q_tot = guess_f_0 / kappa if kappa != 0 else 1e6
+
+        unwrapped_phase = np.unwrap(np.angle(data[edge_idx], deg=False))
+        slope, phase_intercept = np.polyfit(edge_freq - guess_f_0, unwrapped_phase, 1)
+        phase_offset = phase_intercept
+
+        A = amp_at_f0
+        correction = A * np.exp(1j * phase_offset)
+        guess_theta = 0.0
+        guess_Q_e = 2 * guess_Q_tot / (1 - np.abs(data[dip_loc] / correction))
         guess_Q_i = 1 / (1 / guess_Q_tot - 1 / guess_Q_e)
 
         return dict(
             f_0=guess_f_0,
-            A=amp,
+            A=A,
             phase_offset=phase_offset,
             phase_slope=slope,
             Q_i=guess_Q_i,
-            Q_e=guess_Q_e
+            Q_e=guess_Q_e,
+            theta=guess_theta,
+            transmission_slope=transmission_slope * guess_f_0 / A,
         )
 
 
