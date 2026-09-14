@@ -489,7 +489,7 @@ class PiSpecProgram(AveragerProgramV2):
     '''
     Runs pi-pulse spectroscopy to determine the qubit frequency.
 
-    A Gaussian pi pulse is used when ``pi_spec_flattop_ramp``,
+    A Gaussian pi pulse is used when ``q_pi_flattop_ramp``,
     ``q_pi_flattop_length``, or ``q_pi_flattop_gain`` is absent or None.
     Otherwise, a cosine-ramped flat-top pi pulse is used.
     '''
@@ -504,7 +504,7 @@ class PiSpecProgram(AveragerProgramV2):
 
         # Pump pulse definition
         self.add_loop("pi_spec_freqs_loop", self.cfg["pi_spec_freq_steps"])
-        flattop_ramp = self.cfg.get("pi_spec_flattop_ramp", None)
+        flattop_ramp = self.cfg.get("q_pi_flattop_ramp", None)
         flattop_length = self.cfg.get("q_pi_flattop_length", None)
         flattop_gain = self.cfg.get("q_pi_flattop_gain", None)
         if flattop_ramp is None or flattop_length is None or flattop_gain is None:
@@ -627,7 +627,7 @@ class T1Program(AveragerProgramV2):
     '''
     Measures the T1 time of the qubit.
 
-    A Gaussian pi pulse is used when ``t1_flattop_ramp``,
+    A Gaussian pi pulse is used when ``q_pi_flattop_ramp``,
     ``q_pi_flattop_length``, or ``q_pi_flattop_gain`` is absent or None.
     Otherwise, a cosine-ramped flat-top pi pulse is used.
     '''
@@ -645,7 +645,7 @@ class T1Program(AveragerProgramV2):
         self.add_loop("t1_wait_time_loop", self.cfg["t1_steps"])
 
         # Pump pulse definition
-        flattop_ramp = self.cfg.get("t1_flattop_ramp", None)
+        flattop_ramp = self.cfg.get("q_pi_flattop_ramp", None)
         flattop_length = self.cfg.get("q_pi_flattop_length", None)
         flattop_gain = self.cfg.get("q_pi_flattop_gain", None)
         if flattop_ramp is None or flattop_length is None or flattop_gain is None:
@@ -718,7 +718,7 @@ class T2RProgram(AveragerProgramV2):
     '''
     Measures the T2 Ramsey time of the qubit by the Ramsey measurement.
 
-    Gaussian pi/2 pulses are used when ``t2r_flattop_ramp``,
+    Gaussian pi/2 pulses are used when ``q_pi_flattop_ramp``,
     ``q_pi_flattop_length``, or ``q_pi_flattop_gain`` is absent or None.
     Otherwise, cosine-ramped flat-top pi/2 pulses are used.
     '''
@@ -736,7 +736,7 @@ class T2RProgram(AveragerProgramV2):
         self.add_loop("t2r_wait_time_loop", self.cfg["t2r_steps"])
 
         # Pump pulse definition
-        flattop_ramp = self.cfg.get("t2r_flattop_ramp", None)
+        flattop_ramp = self.cfg.get("q_pi_flattop_ramp", None)
         flattop_length = self.cfg.get("q_pi_flattop_length", None)
         flattop_gain = self.cfg.get("q_pi_flattop_gain", None)
         if flattop_ramp is None or flattop_length is None or flattop_gain is None:
@@ -835,7 +835,7 @@ class T2nProgram(AveragerProgramV2):
     When executed without any artificial detuning set by phases, one can fine-tune
     the frequency of the qubit from the fit.
 
-    Gaussian pi and pi/2 pulses are used when ``t2n_flattop_ramp``,
+    Gaussian pi and pi/2 pulses are used when ``q_pi_flattop_ramp``,
     ``q_pi_flattop_length``, or ``q_pi_flattop_gain`` is absent or None.
     Otherwise, cosine-ramped flat-top pi and pi/2 pulses are used.
     '''
@@ -851,7 +851,7 @@ class T2nProgram(AveragerProgramV2):
         self.add_loop("t2e_wait_time_loop", self.cfg["t2e_steps"])
 
         # Pump pulse definition
-        flattop_ramp = self.cfg.get("t2n_flattop_ramp", None)
+        flattop_ramp = self.cfg.get("q_pi_flattop_ramp", None)
         flattop_length = self.cfg.get("q_pi_flattop_length", None)
         flattop_gain = self.cfg.get("q_pi_flattop_gain", None)
         if flattop_ramp is None or flattop_length is None or flattop_gain is None:
