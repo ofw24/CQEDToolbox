@@ -871,6 +871,96 @@ class QubitGain(ProtocolParameterBase):
 
 
 @dataclass
+class EFDriveGain(ProtocolParameterBase):
+    name: str = field(default="ef_drive_gain", init=False)
+    description: str = field(default="Amplitude of the e-f time-Rabi drive", init=False)
+
+    def _dummy_getter(self):
+        q = nestedAttributeFromString(self.params, "active.qubit")()
+        return nestedAttributeFromString(self.params, f"{q}.pulses.ef.amp")()
+
+    def _dummy_setter(self, value):
+        q = nestedAttributeFromString(self.params, "active.qubit")()
+        return nestedAttributeFromString(self.params, f"{q}.pulses.ef.amp")(value)
+
+    def _qick_getter(self):
+        q = nestedAttributeFromString(self.params, "active.qubit")()
+        return nestedAttributeFromString(self.params, f"{q}.pulses.ef.gain")()
+
+    def _qick_setter(self, value):
+        q = nestedAttributeFromString(self.params, "active.qubit")()
+        return nestedAttributeFromString(self.params, f"{q}.pulses.ef.gain")(value)
+
+    def _opx_getter(self):
+        q = nestedAttributeFromString(self.params, "active.qubit")()
+        return nestedAttributeFromString(self.params, f"{q}.pulses.ef.amp")()
+
+    def _opx_setter(self, value):
+        q = nestedAttributeFromString(self.params, "active.qubit")()
+        return nestedAttributeFromString(self.params, f"{q}.pulses.ef.amp")(value)
+
+
+@dataclass
+class QubitTemperature(ProtocolParameterBase):
+    name: str = field(default="qubit_temperature", init=False)
+    description: str = field(default="Effective qubit temperature inferred from e-f Rabi amplitudes", init=False)
+
+    def _dummy_getter(self):
+        q = nestedAttributeFromString(self.params, "active.qubit")()
+        return nestedAttributeFromString(self.params, f"{q}.temperature")()
+
+    def _dummy_setter(self, value):
+        q = nestedAttributeFromString(self.params, "active.qubit")()
+        return nestedAttributeFromString(self.params, f"{q}.temperature")(value)
+
+    def _qick_getter(self):
+        q = nestedAttributeFromString(self.params, "active.qubit")()
+        return nestedAttributeFromString(self.params, f"{q}.temperature")()
+
+    def _qick_setter(self, value):
+        q = nestedAttributeFromString(self.params, "active.qubit")()
+        return nestedAttributeFromString(self.params, f"{q}.temperature")(value)
+
+    def _opx_getter(self):
+        q = nestedAttributeFromString(self.params, "active.qubit")()
+        return nestedAttributeFromString(self.params, f"{q}.temperature")()
+
+    def _opx_setter(self, value):
+        q = nestedAttributeFromString(self.params, "active.qubit")()
+        return nestedAttributeFromString(self.params, f"{q}.temperature")(value)
+
+
+@dataclass
+class QubitTemperatureError(ProtocolParameterBase):
+    name: str = field(default="qubit_temperature_error", init=False)
+    description: str = field(default="One-standard-deviation uncertainty of the inferred qubit temperature", init=False)
+
+    def _dummy_getter(self):
+        q = nestedAttributeFromString(self.params, "active.qubit")()
+        return nestedAttributeFromString(self.params, f"{q}.temperature_error")()
+
+    def _dummy_setter(self, value):
+        q = nestedAttributeFromString(self.params, "active.qubit")()
+        return nestedAttributeFromString(self.params, f"{q}.temperature_error")(value)
+
+    def _qick_getter(self):
+        q = nestedAttributeFromString(self.params, "active.qubit")()
+        return nestedAttributeFromString(self.params, f"{q}.temperature_error")()
+
+    def _qick_setter(self, value):
+        q = nestedAttributeFromString(self.params, "active.qubit")()
+        return nestedAttributeFromString(self.params, f"{q}.temperature_error")(value)
+
+    def _opx_getter(self):
+        q = nestedAttributeFromString(self.params, "active.qubit")()
+        return nestedAttributeFromString(self.params, f"{q}.temperature_error")()
+
+    def _opx_setter(self, value):
+        q = nestedAttributeFromString(self.params, "active.qubit")()
+        return nestedAttributeFromString(self.params, f"{q}.temperature_error")(value)
+
+
+@dataclass
 class QubitFrequency(ProtocolParameterBase):
     name: str = field(default="qubit_frequency", init=False)
     description: str = field(default="Frequency of the qubit", init=False)

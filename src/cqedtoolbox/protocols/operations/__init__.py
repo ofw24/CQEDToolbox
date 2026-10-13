@@ -32,3 +32,4 @@ from cqedtoolbox.protocols.operations.single_qubit.sat_spec import SaturationSpe
 from cqedtoolbox.protocols.operations.single_qubit.t1 import T1Operation
 from cqedtoolbox.protocols.operations.single_qubit.t2e import T2EOperation
 from cqedtoolbox.protocols.operations.single_qubit.t2r import T2ROperation
+from cqedtoolbox.protocols.operations.single_qubit.qubit_temperature import QubitTemperatureOperation

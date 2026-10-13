@@ -168,7 +168,7 @@ def measure_time_rabi():
     qn = getp("active.qubit", None)
 
     time_rabi_stop = getp(f"scripts.{SCRIPT}.time_rabi_stop")
-    time_rabi_points = getp(f"scripts.{SCRIPT}.time_rabi_time_points")
+    time_rabi_points = getp(f"scripts.{SCRIPT}.time_rabi_points")
 
 
     nreps = int(getp("opx.default_reps"))
@@ -193,6 +193,63 @@ def measure_time_rabi():
     data_loc, _ = run_measurement(
         sweep=measurement, name=f"{single_transmon.options.qubit_element}_time_rabi"
     )
+    return data_loc
+
+
+def _ef_time_rabi_settings():
+    """Return the shared e-f time-Rabi settings from the parameter manager."""
+    qn = getp("active.qubit", None)
+    time_rabi_stop = int(getp(f"scripts.{SCRIPT}.time_rabi_stop"))
+    time_rabi_points = int(getp(f"scripts.{SCRIPT}.time_rabi_points"))
+    ge_if = int(getp(f"{qn}.IF"))
+    ef_if = int(ge_if - abs(getp(f"{qn}.alpha")))
+    return qn, time_rabi_stop, time_rabi_points, ge_if, ef_if
+
+
+def measure_ef_time_rabi():
+    """Run a single-frequency e-f time Rabi measurement.
+
+    The time sampling is shared with ``measure_time_rabi``.  ``alpha`` is
+    stored as a positive anharmonicity magnitude, so the e-f IF is
+    ``IF - abs(alpha)``.
+    """
+    qn, time_rabi_stop, time_rabi_points, ge_if, ef_if = _ef_time_rabi_settings()
+    ef_amplitude = getp(f"{qn}.pulses.ef.amp")
+    nreps = int(getp("opx.default_reps"))
+    batchsize = int(getp("opx.default_batch"))
+
+    measurement = single_transmon.ef_time_rabi(
+        t0=20,
+        t1=20 + time_rabi_stop,
+        nt=time_rabi_points,
+        ge_if=ge_if,
+        ef_if=ef_if,
+        drive_amplitude=ef_amplitude,
+        n_reps=nreps,
+        collector_options=dict(batchsize=batchsize),
+    )
+    data_loc, _ = run_measurement(sweep=measurement, name=f"{qn}_ef_time_rabi")
+    return data_loc
+
+
+def measure_ef_time_rabi_after_ge_pi():
+    """Run e-f time Rabi after a calibrated g-e pi preparation pulse."""
+    qn, time_rabi_stop, time_rabi_points, ge_if, ef_if = _ef_time_rabi_settings()
+    ef_amplitude = getp(f"{qn}.pulses.ef.amp")
+    nreps = int(getp("opx.default_reps"))
+    batchsize = int(getp("opx.default_batch"))
+
+    measurement = single_transmon.ef_time_rabi_after_ge_pi(
+        t0=20,
+        t1=20 + time_rabi_stop,
+        nt=time_rabi_points,
+        ge_if=ge_if,
+        ef_if=ef_if,
+        drive_amplitude=ef_amplitude,
+        n_reps=nreps,
+        collector_options=dict(batchsize=batchsize),
+    )
+    data_loc, _ = run_measurement(sweep=measurement, name=f"{qn}_ef_time_rabi_after_ge_pi")
     return data_loc
 
 

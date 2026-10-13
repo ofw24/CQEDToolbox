@@ -602,6 +602,129 @@ def qubit_time_rabi(t0, t1, nt, ssb0, ssb1, nssb, n_reps):
 
 @RecordOPXdata(
     independent("repetition"),
+    independent("pulse_len"),
+    ComplexOPXData(
+        "signal",
+        depends_on=["repetition", "pulse_len"],
+        i_data_stream="I",
+        q_data_stream="Q",
+    ),
+)
+def ef_time_rabi(t0, t1, nt, ge_if, ef_if, drive_amplitude, n_reps):
+    """Perform an unprepared time Rabi experiment on the e-f transition."""
+    t0 = t0 // 4
+    t1 = t1 // 4
+    dt = (t1 - t0) // (nt - 1)
+
+    with program() as qua_measurement:
+        i_stream = declare_stream()
+        q_stream = declare_stream()
+        t_stream = declare_stream()
+        rep_stream = declare_stream()
+
+        I = declare(fixed)
+        Q = declare(fixed)
+        i = declare(int)
+        i_t = declare(int)
+        t = declare(int)
+        t_ns = declare(int)
+
+        with for_(i, 0, i < n_reps, i + 1):
+            assign(t, t0 - dt)
+            with for_(i_t, 0, i_t < nt, i_t + 1):
+                assign(t, t + dt)
+                assign(t_ns, t * 4)
+                prepare()
+
+                update_frequency(options.qubit_element, ef_if)
+                play(
+                    f"{options.qubit_element}_square_pi" * amp(drive_amplitude),
+                    options.qubit_element,
+                    duration=t,
+                )
+                align(options.qubit_element, options.readout_element)
+                measure_qubit(I, Q)
+                update_frequency(options.qubit_element, ge_if)
+
+                save(I, i_stream)
+                save(Q, q_stream)
+                save(t_ns, t_stream)
+                save(i, rep_stream)
+
+        with stream_processing():
+            rep_stream.buffer(nt).save_all("repetition")
+            t_stream.buffer(nt).save_all("pulse_len")
+            i_stream.buffer(nt).save_all("I")
+            q_stream.buffer(nt).save_all("Q")
+
+    return qua_measurement
+
+
+@RecordOPXdata(
+    independent("repetition"),
+    independent("pulse_len"),
+    ComplexOPXData(
+        "signal",
+        depends_on=["repetition", "pulse_len"],
+        i_data_stream="I",
+        q_data_stream="Q",
+    ),
+)
+def ef_time_rabi_after_ge_pi(t0, t1, nt, ge_if, ef_if, drive_amplitude, n_reps):
+    """Perform e-f time Rabi after an explicit calibrated g-e pi pulse."""
+    t0 = t0 // 4
+    t1 = t1 // 4
+    dt = (t1 - t0) // (nt - 1)
+
+    with program() as qua_measurement:
+        i_stream = declare_stream()
+        q_stream = declare_stream()
+        t_stream = declare_stream()
+        rep_stream = declare_stream()
+
+        I = declare(fixed)
+        Q = declare(fixed)
+        i = declare(int)
+        i_t = declare(int)
+        t = declare(int)
+        t_ns = declare(int)
+
+        with for_(i, 0, i < n_reps, i + 1):
+            assign(t, t0 - dt)
+            with for_(i_t, 0, i_t < nt, i_t + 1):
+                assign(t, t + dt)
+                assign(t_ns, t * 4)
+                prepare()
+
+                update_frequency(options.qubit_element, ge_if)
+                play(f"{options.qubit_element}_pi_pulse", options.qubit_element)
+                align()
+                update_frequency(options.qubit_element, ef_if)
+                play(
+                    f"{options.qubit_element}_square_pi" * amp(drive_amplitude),
+                    options.qubit_element,
+                    duration=t,
+                )
+                align(options.qubit_element, options.readout_element)
+                measure_qubit(I, Q)
+                update_frequency(options.qubit_element, ge_if)
+
+                save(I, i_stream)
+                save(Q, q_stream)
+                save(t_ns, t_stream)
+                save(i, rep_stream)
+
+        with stream_processing():
+            rep_stream.buffer(nt).save_all("repetition")
+            t_stream.buffer(nt).save_all("pulse_len")
+            i_stream.buffer(nt).save_all("I")
+            q_stream.buffer(nt).save_all("Q")
+
+    return qua_measurement
+
+
+@RecordOPXdata(
+    independent("repetition"),
     independent("delay"),
     ComplexOPXData(
         "signal",

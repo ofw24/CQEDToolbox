@@ -251,6 +251,14 @@
     "unit": "us",
     "value": 9.847294302273214
   },
+  "parameter_manager.q01.temperature": {
+    "unit": "K",
+    "value": null
+  },
+  "parameter_manager.q01.temperature_error": {
+    "unit": "K",
+    "value": null
+  },
   "parameter_manager.q01.detuning": {
     "unit": "MHz",
     "value": 1151.3851404190063
@@ -288,6 +296,10 @@
     "value": 0.2
   },
   "parameter_manager.q01.pulses.pi.amp": {
+    "unit": "",
+    "value": 0.4991246743723084
+  },
+  "parameter_manager.q01.pulses.ef.amp": {
     "unit": "",
     "value": 0.4991246743723084
   },

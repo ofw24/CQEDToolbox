@@ -6,5 +6,6 @@ from .t1 import T1Operation
 from .t2e import T2EOperation
 from .t2r import T2ROperation
 from .power_rabi import PowerRabi
+from .qubit_temperature import QubitTemperatureOperation
 from .res_spec_vs_gain import ResonatorSpectroscopyVsGain
 from .pi_spec import PiSpectroscopy

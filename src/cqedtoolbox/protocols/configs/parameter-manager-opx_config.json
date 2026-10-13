@@ -59,6 +59,14 @@
     "unit": "ns",
     "value": 9000.0
   },
+  "parameter_manager.q01.temperature": {
+    "unit": "K",
+    "value": null
+  },
+  "parameter_manager.q01.temperature_error": {
+    "unit": "K",
+    "value": null
+  },
   "parameter_manager.q01.alpha": {
     "unit": "Hz",
     "value": 181800000.0
@@ -90,6 +98,10 @@
   "parameter_manager.q01.pulses.pi.len": {
     "unit": "",
     "value": 1200
+  },
+  "parameter_manager.q01.pulses.ef.amp": {
+    "unit": "",
+    "value": 0.00768
   },
   "parameter_manager.q01.readout.IF": {
     "unit": "Hz",
