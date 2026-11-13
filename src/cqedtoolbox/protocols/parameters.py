@@ -226,6 +226,25 @@ class ReadoutLength(ProtocolParameterBase):
         readout_pulse = nestedAttributeFromString(self.params, "opx.readout_pulse")()
         return nestedAttributeFromString(self.params, f"{q}.readout.{readout_pulse}.len")(value)
 
+@dataclass
+class PiLength(ProtocolParameterBase):
+    name: str = field(default="pi_length", init=False)
+    description: str = field(default="Length of the readout pulse", init=False)
+
+    def _dummy_getter(self):
+        raise NotImplementedError
+
+    def _dummy_setter(self, value):
+        raise NotImplementedError
+
+    def _qick_getter(self):
+        active_qubit = nestedAttributeFromString(self.params, "active.qubit")()
+        return nestedAttributeFromString(self.params, f"{active_qubit}.pulses.pi.flattop_length")()
+
+    def _qick_setter(self, value):
+        active_qubit = nestedAttributeFromString(self.params, "active.qubit")()
+        return nestedAttributeFromString(self.params, f"{active_qubit}.pulses.pi.flattop_length")(value)
+
 
 @dataclass
 class ReadoutGain(ProtocolParameterBase):

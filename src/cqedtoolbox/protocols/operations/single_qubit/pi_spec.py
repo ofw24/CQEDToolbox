@@ -25,6 +25,7 @@ from cqedtoolbox.protocols.parameters import (
     QubitGain,
     ReadoutGain,
     ReadoutLength,
+    PiLength,
     opx_check_qubit_window,
 )
 from cqedtoolbox.measurement_lib.opx.advanced.qubit_tuneup import measure_pi_spec
@@ -174,6 +175,7 @@ class PiSpectroscopy(ProtocolOperation):
             start_freq=StartPiSpecFrequency(params),
             end_freq=EndPiSpecFrequency(params),
             qubit_gain=QubitGain(params),
+            pi_length=PiLength(params),
             readout_gain=ReadoutGain(params),
             readout_length=ReadoutLength(params)
         )
@@ -226,7 +228,16 @@ class PiSpectroscopy(ProtocolOperation):
 
         sweep = PiSpecProgram()
         logger.debug("Sweep created, running measurement")
-        loc, da = run_and_save_sweep(sweep, "data", self.name)
+        old_gain = QubitGain(self.params)()
+        old_length = PiLength(self.params)()
+        try:
+            QubitGain(old_gain / 20)
+            PiLength(old_length * 20)
+            loc, da = run_and_save_sweep(sweep, "data", self.name)
+        finally:
+            QubitGain(old_gain)
+            PiLength(old_length)            
+        
         logger.info("Measurement complete")
 
         return loc
