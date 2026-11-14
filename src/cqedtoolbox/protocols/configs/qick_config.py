@@ -89,8 +89,10 @@ class QickConfig(QBoardConfig):
             # Power rabi
             'q_gain_loop_var': QickSweep1D("q_gains_loop", getp(params, f"{active_qubit}.scripts.power_rabi.start_g"), getp(params, f"{active_qubit}.scripts.power_rabi.end_g")),
             'q_gain_steps': getp(params, f"{active_qubit}.scripts.power_rabi.steps"),
-            'amprabi_flattop_ramp': getp(params, f"{active_qubit}.scripts.power_rabi.flattop_ramp"),
-            'amprabi_flattop_length': getp(params, f"{active_qubit}.scripts.power_rabi.flattop_length"),
+            # The default implementation calibrates the configured pi-pulse timing.
+            # Custom QickConfig implementations may source these from script parameters.
+            'amprabi_flattop_ramp': getp(params, f"{active_qubit}.pulses.pi.flattop_ramp"),
+            'amprabi_flattop_length': getp(params, f"{active_qubit}.pulses.pi.flattop_length"),
             # Gaussian amplitude-Rabi pulse; by default uses the pi pulse's sigma/nsigma.
             'amprabi_gaussian_sigma': getp(params, f"{active_qubit}.pulses.pi.gaussian_sigma"),
             'amprabi_gaussian_nsigma': getp(params, f"{active_qubit}.pulses.pi.gaussian_nsigma"),

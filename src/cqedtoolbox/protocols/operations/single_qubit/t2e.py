@@ -15,7 +15,7 @@ from labcore.measurement.record import record_as
 from labcore.data.datadict_storage import datadict_from_hdf5, load_as_xr
 
 from labcore.protocols.base import (
-    ProtocolOperation, PlatformTypes, serialize_fit_params,
+    ProtocolOperation, OperationStatus, serialize_fit_params,
     CorrectionParameter, CheckResult, Correction, EvaluateResult, PlatformTypes
 )
 from cqedtoolbox.protocols.parameters import (
@@ -119,6 +119,15 @@ class IncreaseAveragingCorrection(Correction):
 
     def report_output(self) -> str:
         return self._last_change
+
+    # TODO: Move correction restoration and terminal cleanup into labcore's
+    # correction lifecycle.
+    def restore(self) -> None:
+        if self._original_reps is not None:
+            self.reps_param(self._original_reps)
+        self._original_reps = None
+        self._count = 0
+        self._last_change = ""
 
 
 # ---------------------------------------------------------------------------
@@ -327,4 +336,6 @@ class T2EOperation(ProtocolOperation):
         )
 
         result = super().correct(result)  # adds check table + success update line
+        if result.status in (OperationStatus.SUCCESS, OperationStatus.FAILURE):
+            self._increase_averaging.restore()
         return result

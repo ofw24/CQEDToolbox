@@ -141,6 +141,7 @@ class IncreaseAveragingCorrection(Correction):
         self.reps_param = reps_param
         self.factor_param = factor_param
         self.max_increases_param = max_increases_param
+        self._original_reps: int | None = None
         self._count = 0
         self._last_change = ""
 
@@ -148,14 +149,25 @@ class IncreaseAveragingCorrection(Correction):
         return self._count < int(self.max_increases_param())
 
     def apply(self) -> None:
-        old = self.reps_param()
-        new = int(old * self.factor_param())
+        if self._original_reps is None:
+            self._original_reps = int(self.reps_param())
+        old = int(self.reps_param())
+        new = int(self._original_reps * (self.factor_param() ** (self._count + 1)))
         self.reps_param(new)
         self._count += 1
         self._last_change = f"{old} → {new} reps"
 
     def report_output(self) -> str:
         return self._last_change
+
+    # TODO: Move correction restoration and terminal cleanup into labcore's
+    # correction lifecycle.
+    def restore(self) -> None:
+        if self._original_reps is not None:
+            self.reps_param(self._original_reps)
+        self._original_reps = None
+        self._count = 0
+        self._last_change = ""
 
 
 class PiSpectroscopy(ProtocolOperation):
@@ -164,6 +176,7 @@ class PiSpectroscopy(ProtocolOperation):
     _SIM_SIGMA = 3e6  # 3 MHz
     _SIM_AMP = 0.5
     _SIM_NOISE_AMP = 0.02
+    _PI_SPEC_PULSE_FACTOR = 10
 
     def __init__(self, params):
         super().__init__()
@@ -226,18 +239,18 @@ class PiSpectroscopy(ProtocolOperation):
     def _measure_qick(self) -> Path:
         logger.info("Starting qick pi spectroscopy measurement")
 
-        sweep = PiSpecProgram()
-        logger.debug("Sweep created, running measurement")
-        old_gain = QubitGain(self.params)()
-        old_length = PiLength(self.params)()
+        old_gain = self.qubit_gain()
+        old_length = self.pi_length()
         try:
-            self.qubit_gain(old_gain / 10)
-            self.pi_length(old_length * 10)
+            self.qubit_gain(old_gain / self._PI_SPEC_PULSE_FACTOR)
+            self.pi_length(old_length * self._PI_SPEC_PULSE_FACTOR)
+            sweep = PiSpecProgram()
+            logger.debug("Sweep created, running measurement")
             loc, da = run_and_save_sweep(sweep, "data", self.name)
         finally:
             self.qubit_gain(old_gain)
-            self.pi_length(old_length)         
-        
+            self.pi_length(old_length)
+
         logger.info("Measurement complete")
 
         return loc
@@ -335,6 +348,9 @@ class PiSpectroscopy(ProtocolOperation):
         self.report_output.append(header)
 
         result = super().correct(result)  # adds check table; no auto-figure since list is empty
+
+        if result.status in (OperationStatus.SUCCESS, OperationStatus.FAILURE):
+            self._increase_averaging.restore()
 
         status_line = "SUCCESSFUL" if result.status == OperationStatus.SUCCESS else "UNSUCCESSFUL"
         self.report_output.extend([
