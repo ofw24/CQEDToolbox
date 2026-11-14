@@ -8,15 +8,18 @@ import logging
 from dataclasses import dataclass, field
 from labcore.protocols.base import ProtocolParameterBase
 from instrumentserver.helpers import nestedAttributeFromString
+from cqedtoolbox.measurement_lib.qick.pulse_shapes import normalize_pi_pulse_shape
 
 
 logger = logging.getLogger(__name__)
 
-QICK_PI_PULSE_SHAPES = ("gaussian", "flattop")
-
 
 def _qick_pi_pulse_shape(params) -> tuple[str, str]:
-    """Return the active qubit and its selected QICK pi-pulse shape."""
+    """Return the active qubit and its selected QICK pi-pulse shape.
+
+    A missing shape falls back to the default silently; the warning is logged
+    once per program build in ``single_transmon_v2.get_pi_pulse_shape``.
+    """
     active_qubit = nestedAttributeFromString(params, "active.qubit")()
     try:
         shape = nestedAttributeFromString(
@@ -24,17 +27,7 @@ def _qick_pi_pulse_shape(params) -> tuple[str, str]:
         )()
     except AttributeError:
         shape = None
-
-    if shape is None:
-        return active_qubit, "flattop"
-
-    shape = str(shape).strip().lower()
-    if shape not in QICK_PI_PULSE_SHAPES:
-        raise ValueError(
-            f"Unknown pi pulse shape {shape!r}; expected one of "
-            f"{QICK_PI_PULSE_SHAPES}."
-        )
-    return active_qubit, shape
+    return active_qubit, normalize_pi_pulse_shape(shape)
 
 
 def _qick_pi_parameter(params, gaussian: str, flattop: str):

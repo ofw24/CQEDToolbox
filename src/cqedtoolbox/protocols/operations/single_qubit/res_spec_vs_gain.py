@@ -213,7 +213,8 @@ class IncreaseRepetitionsCorrection(Correction):
         return self._last_change
 
     # TODO: Move correction restoration and terminal cleanup into labcore's
-    # correction lifecycle.
+    # correction lifecycle, including cleanup when an attempt raises or is
+    # interrupted (currently restore() only runs from correct()).
     def restore(self) -> None:
         if self._original_reps is not None:
             self.reps_param(self._original_reps)

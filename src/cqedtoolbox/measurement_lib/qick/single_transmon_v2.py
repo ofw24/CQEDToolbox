@@ -3,6 +3,7 @@ import logging
 from qick.asm_v2 import AveragerProgramV2
 from cqedtoolbox.instruments.qick.qick_sweep_v2 import QickBoardSweep, ComplexQICKData, PulseVariable, TimeVariable
 from labcore.measurement import independent
+from cqedtoolbox.measurement_lib.qick.pulse_shapes import DEFAULT_PI_PULSE_SHAPE, normalize_pi_pulse_shape
 
 '''
 This format assumes some standard nomenclature that one must follow while using the QICK program.
@@ -14,25 +15,21 @@ For an example file using these functions, refer to
 
 logger = logging.getLogger(__name__)
 
-PI_PULSE_SHAPES = ("gaussian", "flattop")
-
 
 def get_pi_pulse_shape(cfg):
     """Return the configured pi-pulse shape, 'gaussian' or 'flattop'.
 
     Read from ``cfg['q_pi_pulse_shape']`` (``{qubit}.pulses.pi.pulse_shape`` in the
-    parameter manager). Falls back to 'flattop' with a warning when unset.
+    parameter manager). Falls back to ``DEFAULT_PI_PULSE_SHAPE`` with a warning when
+    unset. This is the only place that warns about a missing shape; the protocol
+    parameters fall back silently.
     """
     shape = cfg.get("q_pi_pulse_shape")
     if shape is None:
-        logger.warning("pulses.pi.pulse_shape is not set; defaulting to 'flattop'.")
-        return "flattop"
-    shape = str(shape).strip().lower()
-    if shape not in PI_PULSE_SHAPES:
-        raise ValueError(
-            f"Unknown pi pulse shape {shape!r}; expected one of {PI_PULSE_SHAPES}."
+        logger.warning(
+            "pulses.pi.pulse_shape is not set; defaulting to %r.", DEFAULT_PI_PULSE_SHAPE
         )
-    return shape
+    return normalize_pi_pulse_shape(shape)
 
 
 def add_pi_envelope(prog, cfg, ch, prefix, label, key_prefix="q_pi", require_gain=True):
