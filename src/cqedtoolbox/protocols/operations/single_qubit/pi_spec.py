@@ -231,12 +231,12 @@ class PiSpectroscopy(ProtocolOperation):
         old_gain = QubitGain(self.params)()
         old_length = PiLength(self.params)()
         try:
-            QubitGain(old_gain / 20)
-            PiLength(old_length * 20)
+            self.qubit_gain(old_gain / 10)
+            self.pi_length(old_length * 10)
             loc, da = run_and_save_sweep(sweep, "data", self.name)
         finally:
-            QubitGain(old_gain)
-            PiLength(old_length)            
+            self.qubit_gain(old_gain)
+            self.pi_length(old_length)         
         
         logger.info("Measurement complete")
 

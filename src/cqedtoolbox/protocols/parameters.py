@@ -245,6 +245,12 @@ class PiLength(ProtocolParameterBase):
         active_qubit = nestedAttributeFromString(self.params, "active.qubit")()
         return nestedAttributeFromString(self.params, f"{active_qubit}.pulses.pi.flattop_length")(value)
 
+    def _opx_getter(self):
+        raise NotImplementedError
+
+    def _opx_setter(self, value):
+        raise NotImplementedError
+
 
 @dataclass
 class ReadoutGain(ProtocolParameterBase):
