@@ -176,6 +176,7 @@ class T2ROperation(ProtocolOperation):
         self.fit_result = None
         self.residuals = None
         self.snr = None
+        self.fit_inverted = False
 
     def _measure_dummy(self) -> Path:
         logger.info("Starting dummy T2 Ramsey measurement")
@@ -221,23 +222,39 @@ class T2ROperation(ProtocolOperation):
         self.independents["delays"] = data["delay"].values
         self.dependents["signal"] = data["signal"].values
 
-    def _fit_exponentially_decaying_sine(self, delays, signal, fig_title="") -> tuple:
+    def _single_fit(self, delays, signal):
+        """Fit one candidate. Returns (fit_result, fit_curve, residuals, sse)."""
         fit = ExponentiallyDecayingSine(delays, signal)
         fit_result = fit.run(fit)
         fit_curve = fit_result.eval()
         residuals = signal - fit_curve
+        sse = float(np.sum(np.abs(residuals) ** 2))
+        return fit_result, fit_curve, residuals, sse
+
+    def _fit_exponentially_decaying_sine(self, delays, signal, fig_title="") -> tuple:
+        # Fit both data and -data; keep whichever agrees best with the data it was fit to.
+        signal = np.asarray(signal)
+        candidates = {}
+        for inverted, s in ((False, signal), (True, -signal)):
+            candidates[inverted] = (s, *self._single_fit(delays, s))
+            logger.info(f"{'-data' if inverted else 'data'} fit: SSE={candidates[inverted][4]:.4g}")
+
+        inverted = min(candidates, key=lambda k: candidates[k][4])
+        fit_signal, fit_result, fit_curve, residuals, _ = candidates[inverted]
+        self.fit_inverted = inverted
+
         amp = fit_result.params["A"].value
         noise = np.std(residuals)
         snr = np.abs(amp / (4 * noise))
 
         fig, ax = plt.subplots()
-        ax.set_title(fig_title)
+        ax.set_title(fig_title + (" (inverted data)" if inverted else ""))
         if self.platform_type == PlatformTypes.OPX:
             ax.set_xlabel("Delay (ns)")
         else:
             ax.set_xlabel("Delay (μs)")
-        ax.set_ylabel("Rotated Signal (A.U)")
-        ax.plot(delays, signal, label="Data")
+        ax.set_ylabel("Rotated Signal (A.U)" + (" × -1" if inverted else ""))
+        ax.plot(delays, fit_signal, label="Data")
         ax.plot(delays, fit_curve, label="Fit")
         ax.legend()
 
@@ -255,7 +272,8 @@ class T2ROperation(ProtocolOperation):
             ds.add(
                 fit_result=self.fit_result,
                 params=serialize_fit_params(self.fit_result.params),
-                snr=float(self.snr)
+                snr=float(self.snr),
+                fit_inverted=bool(self.fit_inverted),
             )
 
             ds.add_figure(self.name, fig=fig)
@@ -294,7 +312,7 @@ class T2ROperation(ProtocolOperation):
         if figure:
             self.report_output.append(figure)
         self.report_output.append(
-            f"SNR={self.snr:.3f}\n\n"
+            f"SNR={self.snr:.3f}, fit on {'-data' if self.fit_inverted else 'data'}\n\n"
             f"**Fit Report:**\n```\n{str(self.fit_result.lmfit_result.fit_report())}\n```\n\n"
         )
 
