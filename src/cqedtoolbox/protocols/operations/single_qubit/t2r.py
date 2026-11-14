@@ -235,9 +235,21 @@ class T2ROperation(ProtocolOperation):
         # Fit both data and -data; keep whichever agrees best with the data it was fit to.
         signal = np.asarray(signal)
         candidates = {}
+        errors = {}
         for inverted, s in ((False, signal), (True, -signal)):
-            candidates[inverted] = (s, *self._single_fit(delays, s))
-            logger.info(f"{'-data' if inverted else 'data'} fit: SSE={candidates[inverted][4]:.4g}")
+            label = "-data" if inverted else "data"
+            try:
+                candidates[inverted] = (s, *self._single_fit(delays, s))
+            except Exception as e:
+                errors[inverted] = e
+                logger.warning(f"{label} fit raised an error: {e!r}")
+                continue
+            logger.info(f"{label} fit: SSE={candidates[inverted][4]:.4g}")
+
+        if not candidates:
+            raise RuntimeError(
+                f"Fit failed for both data and -data: data: {errors[False]!r}; -data: {errors[True]!r}"
+            ) from errors[False]
 
         inverted = min(candidates, key=lambda k: candidates[k][4])
         fit_signal, fit_result, fit_curve, residuals, _ = candidates[inverted]
