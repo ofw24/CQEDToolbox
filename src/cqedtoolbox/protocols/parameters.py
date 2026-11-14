@@ -229,7 +229,7 @@ class ReadoutLength(ProtocolParameterBase):
 @dataclass
 class PiLength(ProtocolParameterBase):
     name: str = field(default="pi_length", init=False)
-    description: str = field(default="Length of the readout pulse", init=False)
+    description: str = field(default="Length of the pi pulse", init=False)
 
     def _dummy_getter(self):
         raise NotImplementedError
